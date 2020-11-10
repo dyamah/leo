@@ -1,0 +1,2 @@
+# leo
+sample rust application
