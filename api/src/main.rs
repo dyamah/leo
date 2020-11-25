@@ -1,8 +1,8 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder, http};
+use actix_cors::Cors;
 
 use lindera::tokenizer::Tokenizer;
 use lindera_core::core::viterbi::Mode;
-
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -24,10 +24,8 @@ fn _analyze(text: &String) -> Vec<Morph> {
     let mut morphs: Vec<Morph> = Vec::new();
     let mut tokenizer = Tokenizer::new(Mode::Normal, "");
 
-    // tokenize the text
     let tokens = tokenizer.tokenize(text.as_str());
 
-    // output the tokens
     tokens.iter().fold(0, |sum, token| {
         let length = token.text.chars().count();
         morphs.push(Morph {start: sum, end: sum + length, surface: String::from(token.text), features: token.detail.clone()});
@@ -49,8 +47,16 @@ async fn analyze(input: web::Json<Input>) -> impl Responder {
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     println!("server starting ...");
+
     HttpServer::new(|| {
+        let cors = Cors::default()
+            .allowed_origin("http://localhost:8088")
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+            .allowed_header(http::header::CONTENT_TYPE)
+            .max_age(3600);
         App::new()
+            .wrap(cors)
             .route("/", web::get().to(index))
             .route("/analyze", web::post().to(analyze))
     })
